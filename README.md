@@ -1,6 +1,6 @@
 ## EX. NO:2 IMPLEMENTATION OF PLAYFAIR CIPHER
 
- 
+ .
 
 ## AIM:
  
