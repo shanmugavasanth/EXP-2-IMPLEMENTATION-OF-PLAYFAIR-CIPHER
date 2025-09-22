@@ -44,127 +44,161 @@ Program:
 
 ```
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
+#define SIZE 30
 
-#define SIZE 100
-
-
-void toLowerCase(char str[]) {
-    for (int i = 0; str[i]; i++)
-        if (str[i] >= 'A' && str[i] <= 'Z')
-            str[i] += 32;
+void toLowerCase(char plain[], int ps) {
+   for (int i = 0; i < ps; i++) {
+       if (plain[i] >= 'A' && plain[i] <= 'Z')
+           plain[i] += 32;
+   }
 }
 
-
-int removeSpaces(char str[]) {
-    int count = 0;
-    for (int i = 0; str[i]; i++)
-        if (str[i] != ' ')
-            str[count++] = str[i];
-    str[count] = '\0';
-    return count;
+int removeSpaces(char *plain, int ps) {
+   int i, count = 0;
+   for (i = 0; i < ps; i++) {
+       if (plain[i] != ' ')
+           plain[count++] = plain[i];
+   }
+   plain[count] = '\0';
+   return count;
 }
 
-
-int preparePlainText(char str[]) {
-    int len = strlen(str);
-    for (int i = 0; i < len; i++)
-        if (str[i] == 'j') str[i] = 'i';
-    if (len % 2 != 0) {
-        str[len++] = 'z'; 
-        str[len] = '\0';
-    }
-    return len;
+void generateKeyTable(char key[], int ks, char keyT[5][5]) {
+   int i, j, k;
+   int dicty[26] = {0};
+   for (i = 0; i < ks; i++) {
+       if (key[i] != 'j')
+           dicty[key[i] - 'a'] = 2;
+   }
+   dicty['j' - 'a'] = 1;
+   i = 0; j = 0;
+   for (k = 0; k < ks; k++) {
+       if (dicty[key[k] - 'a'] == 2) {
+           dicty[key[k] - 'a'] -= 1;
+           keyT[i][j] = key[k];
+           j++;
+           if (j == 5) {
+               i++;
+               j = 0;
+           }
+       }
+   }
+   for (k = 0; k < 26; k++) {
+       if (dicty[k] == 0 && (char)(k + 'a') != 'j') {
+           keyT[i][j] = (char)(k + 'a');
+           j++;
+           if (j == 5) {
+               i++;
+               j = 0;
+           }
+       }
+   }
 }
 
-
-void createKeyMatrix(char key[], char matrix[5][5]) {
-    int i, j, k;
-    int used[26] = {0}; 
-    used['j' - 'a'] = 1; 
-    char temp[25];
-    int index = 0;
-
-  
-    for (i = 0; key[i]; i++) {
-        if (!used[key[i] - 'a']) {
-            temp[index++] = key[i];
-            used[key[i] - 'a'] = 1;
-        }
-    }
-
- 
-    for (i = 0; i < 26; i++)
-        if (!used[i])
-            temp[index++] = i + 'a';
-
-  
-    index = 0;
-    for (i = 0; i < 5; i++)
-        for (j = 0; j < 5; j++)
-            matrix[i][j] = temp[index++];
+void search(char keyT[5][5], char a, char b, int arr[]) {
+   int i, j;
+   if (a == 'j') a = 'i';
+   if (b == 'j') b = 'i';
+   for (i = 0; i < 5; i++) {
+       for (j = 0; j < 5; j++) {
+           if (keyT[i][j] == a) {
+               arr[0] = i;
+               arr[1] = j;
+           } else if (keyT[i][j] == b) {
+               arr[2] = i;
+               arr[3] = j;
+           }
+       }
+   }
 }
 
-
-void searchMatrix(char matrix[5][5], char a, char b, int pos[4]) {
-    for (int i = 0; i < 5; i++)
-        for (int j = 0; j < 5; j++) {
-            if (matrix[i][j] == a) { pos[0] = i; pos[1] = j; }
-            if (matrix[i][j] == b) { pos[2] = i; pos[3] = j; }
-        }
+int mod5(int a) {
+   return (a % 5 + 5) % 5;
 }
 
+int prepare(char str[], int ptrs) {
+   if (ptrs % 2 != 0) {
+       str[ptrs++] = 'z';
+       str[ptrs] = '\0';
+   }
+   return ptrs;
+}
 
-void encryptPlayfair(char str[], char matrix[5][5], int len) {
-    int pos[4];
-    for (int i = 0; i < len; i += 2) {
-        searchMatrix(matrix, str[i], str[i + 1], pos);
+void encrypt(char str[], char keyT[5][5], int ps) {
+   int i, a[4];
+   for (i = 0; i < ps; i += 2) {
+       search(keyT, str[i], str[i + 1], a);
+       if (a[0] == a[2]) {
+           str[i] = keyT[a[0]][mod5(a[1] + 1)];
+           str[i + 1] = keyT[a[2]][mod5(a[3] + 1)];
+       } else if (a[1] == a[3]) {
+           str[i] = keyT[mod5(a[0] + 1)][a[1]];
+           str[i + 1] = keyT[mod5(a[2] + 1)][a[3]];
+       } else {
+           str[i] = keyT[a[0]][a[3]];
+           str[i + 1] = keyT[a[2]][a[1]];
+       }
+   }
+}
 
-        if (pos[0] == pos[2]) { 
-            str[i] = matrix[pos[0]][(pos[1] + 1) % 5];
-            str[i + 1] = matrix[pos[0]][(pos[3] + 1) % 5];
-        } else if (pos[1] == pos[3]) { 
-            str[i] = matrix[(pos[0] + 1) % 5][pos[1]];
-            str[i + 1] = matrix[(pos[2] + 1) % 5][pos[1]];
-        } else { 
-            str[i] = matrix[pos[0]][pos[3]];
-            str[i + 1] = matrix[pos[2]][pos[1]];
-        }
-    }
+void decrypt(char str[], char keyT[5][5], int ps) {
+   int i, a[4];
+   for (i = 0; i < ps; i += 2) {
+       search(keyT, str[i], str[i + 1], a);
+       if (a[0] == a[2]) {
+           str[i] = keyT[a[0]][mod5(a[1] - 1)];
+           str[i + 1] = keyT[a[2]][mod5(a[3] - 1)];
+       } else if (a[1] == a[3]) {
+           str[i] = keyT[mod5(a[0] - 1)][a[1]];
+           str[i + 1] = keyT[mod5(a[2] - 1)][a[3]];
+       } else {
+           str[i] = keyT[a[0]][a[3]];
+           str[i + 1] = keyT[a[2]][a[1]];
+       }
+   }
+}
+
+void encryptByPlayfairCipher(char str[], char key[]) {
+   int ps, ks;
+   char keyT[5][5];
+   ks = strlen(key);
+   ks = removeSpaces(key, ks);
+   toLowerCase(key, ks);
+   ps = strlen(str);
+   toLowerCase(str, ps);
+   ps = removeSpaces(str, ps);
+   ps = prepare(str, ps);
+   generateKeyTable(key, ks, keyT);
+   encrypt(str, keyT, ps);
+}
+
+void decryptByPlayfairCipher(char str[], char key[]) {
+   int ps, ks;
+   char keyT[5][5];
+   ks = strlen(key);
+   ks = removeSpaces(key, ks);
+   toLowerCase(key, ks);
+   ps = strlen(str);
+   toLowerCase(str, ps);
+   ps = removeSpaces(str, ps);
+   generateKeyTable(key, ks, keyT);
+   decrypt(str, keyT, ps);
 }
 
 int main() {
-    char plaintext[SIZE], key[SIZE];
-    char matrix[5][5];
-
-  
-    printf("Enter the plain text: ");
-    fgets(plaintext, SIZE, stdin);
-    plaintext[strcspn(plaintext, "\n")] = '\0'; 
-
-   
-    printf("Enter the keyword: ");
-    fgets(key, SIZE, stdin);
-    key[strcspn(key, "\n")] = '\0';
-
-    toLowerCase(plaintext);
-    toLowerCase(key);
-    removeSpaces(plaintext);
-    removeSpaces(key);
-
-
-    createKeyMatrix(key, matrix);
-
-  
-    int len = preparePlainText(plaintext);
-
-  
-    encryptPlayfair(plaintext, matrix, len);
-
-    printf("Cipher Text: %s\n", plaintext);
-
-    return 0;
+   char str[SIZE], key[SIZE];
+   printf("Simulating Playfair Cipher\n");
+   strcpy(key, "playfair");
+   printf("Key text: %s\n", key);
+   strcpy(str, "shanmugavasanth");
+   printf("Plain text: %s\n", str);
+   encryptByPlayfairCipher(str, key);
+   printf("Cipher text: %s\n", str);
+   decryptByPlayfairCipher(str, key);
+   printf("Decrypted text: %s\n", str);
+   return 0;
 }
 ```
 
@@ -172,7 +206,7 @@ int main() {
 
 ## Output:
 
-<img width="358" height="158" alt="image" src="https://github.com/user-attachments/assets/a69cc36c-74ff-4cd9-bdc6-e76113ae89ce" />
+<img width="477" height="197" alt="Screenshot 2025-09-22 141904" src="https://github.com/user-attachments/assets/873362cb-a1c9-419b-a905-35a0b00e8090" />
 
 ## RESULT:
 
